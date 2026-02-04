@@ -1,0 +1,2 @@
+// Este archivo será reemplazado por la imagen real del gimnasio
+// La imagen se aplicará como fondo en FormMainModern.cs

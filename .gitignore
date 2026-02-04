@@ -27,3 +27,21 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Build results
+bin/
+obj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+
+# Logs y cachés
+*.log
+*.cache
+
+# Configuración temporal
+*.db
+*.DS_Store
+Thumbs.db

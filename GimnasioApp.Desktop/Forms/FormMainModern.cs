@@ -1,5 +1,10 @@
 using GimnasioApp.Models;
 using GimnasioApp.Desktop.Theme;
+using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.IO;
+using System.Windows.Forms;
 
 namespace GimnasioApp.Desktop.Forms
 {
@@ -25,13 +30,15 @@ namespace GimnasioApp.Desktop.Forms
             this.Text = "Sistema de Gestión - Gimnasio";
             this.Size = new Size(1200, 800);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.FromArgb(248, 249, 252);
             this.WindowState = FormWindowState.Maximized;
+            
+            // Configurar imagen de fondo
+            SetBackgroundImage();
 
             // Panel principal
             this.mainPanel = new Panel();
             this.mainPanel.Dock = DockStyle.Fill;
-            this.mainPanel.BackColor = Color.FromArgb(248, 249, 252);
+            this.mainPanel.BackColor = Color.Transparent; // Completamente transparente para mostrar fondo
             this.mainPanel.Padding = new Padding(30);
 
             // Label de bienvenida
@@ -42,55 +49,65 @@ namespace GimnasioApp.Desktop.Forms
             this.lblWelcome.Location = new Point(30, 30);
             this.lblWelcome.Size = new Size(800, 40);
 
-            // Botón Cerrar Sesión (Mejorado estéticamente)
-            this.btnCerrarSesion = new Button();
-            this.btnCerrarSesion.Text = "🚪 Cerrar Sesión";
-            this.btnCerrarSesion.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            this.btnCerrarSesion.BackColor = Color.FromArgb(220, 53, 69); // Rojo Bootstrap
-            this.btnCerrarSesion.ForeColor = Color.White;
-            this.btnCerrarSesion.FlatStyle = FlatStyle.Flat;
-            this.btnCerrarSesion.FlatAppearance.BorderSize = 0;
-            this.btnCerrarSesion.FlatAppearance.BorderColor = Color.FromArgb(200, 35, 51);
-            this.btnCerrarSesion.Size = new Size(170, 42);
-            this.btnCerrarSesion.Location = new Point(this.Width - 200, 29);
-            this.btnCerrarSesion.Cursor = Cursors.Hand;
-            this.btnCerrarSesion.Click += BtnCerrarSesion_Click;
+            // Crear un campo placeholder para el botón cerrar sesión (ya no se usa aquí)
+            this.btnCerrarSesion = new Button(); // Solo para evitar errores, no se agrega al form
 
-            // Efectos hover para el botón
-            this.btnCerrarSesion.MouseEnter += (s, e) => {
-                this.btnCerrarSesion.BackColor = Color.FromArgb(200, 35, 51); // Rojo más oscuro al hover
-                this.btnCerrarSesion.FlatAppearance.BorderSize = 1;
-            };
+            // Contenedor de tiles (para layout específico del admin y profesor)
+            if (_currentUser.Rol == "Administrador")
+            {
+                // Para admin: layout específico de 3x3 + 1 centrada
+                this.tilesContainer = new FlowLayoutPanel();
+                this.tilesContainer.Dock = DockStyle.None;
+                this.tilesContainer.Anchor = AnchorStyles.None;
+                this.tilesContainer.Location = new Point(50, 80);
+                this.tilesContainer.Size = new Size(1050, 720); // Aumentado para mostrar la 4ta fila completa
+                this.tilesContainer.FlowDirection = FlowDirection.LeftToRight;
+                this.tilesContainer.WrapContents = true;
+                this.tilesContainer.Padding = new Padding(0);
+                this.tilesContainer.AutoScroll = false; // Sin scroll para admin
+            }
+            else if (_currentUser.Rol == "Profesor")
+            {
+                // Para profesor: layout específico de 2 + 2 + 1 centrada
+                this.tilesContainer = new FlowLayoutPanel();
+                this.tilesContainer.Dock = DockStyle.None;
+                this.tilesContainer.Anchor = AnchorStyles.None;
+                this.tilesContainer.Location = new Point(200, 40); // Posición inicial más arriba
+                this.tilesContainer.Size = new Size(800, 650); // Aumentado altura para mostrar la tarjeta completa sin cortes
+                this.tilesContainer.FlowDirection = FlowDirection.LeftToRight;
+                this.tilesContainer.WrapContents = true;
+                this.tilesContainer.Padding = new Padding(20);
+                this.tilesContainer.AutoScroll = false; // Sin scroll para profesor
+            }
+            else
+            {
+                // Para otros roles: layout centrado normal
+                this.tilesContainer = new FlowLayoutPanel();
+                this.tilesContainer.Dock = DockStyle.None;
+                this.tilesContainer.Anchor = AnchorStyles.None;
+                this.tilesContainer.Location = new Point(50, 80);
+                this.tilesContainer.Size = new Size(1100, 700);
+                this.tilesContainer.FlowDirection = FlowDirection.LeftToRight;
+                this.tilesContainer.WrapContents = true;
+                this.tilesContainer.Padding = new Padding(20);
+                this.tilesContainer.AutoScroll = true;
+            }
             
-            this.btnCerrarSesion.MouseLeave += (s, e) => {
-                this.btnCerrarSesion.BackColor = Color.FromArgb(220, 53, 69); // Volver al color original
-                this.btnCerrarSesion.FlatAppearance.BorderSize = 0;
-            };
-
-            this.btnCerrarSesion.MouseDown += (s, e) => {
-                this.btnCerrarSesion.BackColor = Color.FromArgb(176, 27, 41); // Aún más oscuro al presionar
-            };
-
-            this.btnCerrarSesion.MouseUp += (s, e) => {
-                this.btnCerrarSesion.BackColor = Color.FromArgb(200, 35, 51); // Volver al hover
-            };
-            
-            // Reposicionar cuando la ventana cambie de tamaño
+            // Centrar el contenedor en el formulario
             this.Resize += (s, e) => {
-                this.btnCerrarSesion.Location = new Point(this.Width - 200, 30);
+                var formWidth = this.ClientSize.Width;
+                var containerWidth = this.tilesContainer.Width;
+                var formHeight = this.ClientSize.Height;
+                var containerHeight = this.tilesContainer.Height;
+                
+                // Centrar horizontal y verticalmente (subiendo más)
+                this.tilesContainer.Location = new Point(
+                    (formWidth - containerWidth) / 2, 
+                    (formHeight - containerHeight) / 2 - 50  // -50 para subir más las tarjetas
+                );
             };
-
-            // Contenedor de tiles (ajustado para tiles más grandes)
-            this.tilesContainer = new FlowLayoutPanel();
-            this.tilesContainer.Location = new Point(30, 80);
-            this.tilesContainer.Size = new Size(1200, 700); // Más espacio
-            this.tilesContainer.FlowDirection = FlowDirection.LeftToRight;
-            this.tilesContainer.WrapContents = true;
-            this.tilesContainer.Padding = new Padding(10);
-            this.tilesContainer.AutoScroll = true;
 
             this.mainPanel.Controls.Add(this.lblWelcome);
-            this.mainPanel.Controls.Add(this.btnCerrarSesion);
             this.mainPanel.Controls.Add(this.tilesContainer);
             this.Controls.Add(this.mainPanel);
         }
@@ -100,19 +117,128 @@ namespace GimnasioApp.Desktop.Forms
             // Crear tiles según el rol del usuario
             var tiles = GetTilesByRole();
             
-            foreach (var tile in tiles)
+            if (_currentUser.Rol == "Administrador")
             {
-                var tileButton = CreateTileButton(tile.Title, tile.Description, tile.Icon, tile.Color, tile.Action);
-                tilesContainer.Controls.Add(tileButton);
+                // Layout específico para Administrador: 3x3 + 1 centrada
+                CreateAdminLayout(tiles);
+            }
+            else if (_currentUser.Rol == "Profesor")
+            {
+                // Layout específico para Profesor: 2 tarjetas arriba + 1 centrada abajo
+                CreateProfesorLayout(tiles);
+            }
+            else
+            {
+                // Layout normal para otros roles
+                foreach (var tile in tiles)
+                {
+                    var tileButton = CreateTileButton(tile.Title, tile.Description, tile.Icon, tile.Color, tile.Action);
+                    tilesContainer.Controls.Add(tileButton);
+                }
             }
         }
 
-        private Panel CreateTileButton(string title, string description, string icon, Color color, Action clickAction)
+        private void CreateProfesorLayout(List<TileInfo> tiles)
+        {
+            // Las primeras 2 tarjetas en la primera fila
+            for (int i = 0; i < Math.Min(2, tiles.Count - 1); i++) // -1 para dejar la última para el final
+            {
+                var tile = tiles[i];
+                var tileButton = CreateTileButton(tile.Title, tile.Description, tile.Icon, tile.Color, tile.Action);
+                
+                // Ajustar márgenes para layout de profesor
+                tileButton.Margin = new Padding(25, 15, 25, 15);
+                tilesContainer.Controls.Add(tileButton);
+            }
+            
+            // Las tarjetas restantes (excepto la última) en filas normales
+            for (int i = 2; i < tiles.Count - 1; i++)
+            {
+                var tile = tiles[i];
+                var tileButton = CreateTileButton(tile.Title, tile.Description, tile.Icon, tile.Color, tile.Action);
+                tileButton.Margin = new Padding(25, 15, 25, 15);
+                tilesContainer.Controls.Add(tileButton);
+            }
+            
+            // La tarjeta de cerrar (última) centrada en una nueva fila
+            if (tiles.Count > 0)
+            {
+                var cerrarTile = tiles[tiles.Count - 1]; // Última tarjeta (Cerrar)
+                var cerrarButton = CreateTileButton(cerrarTile.Title, cerrarTile.Description, cerrarTile.Icon, cerrarTile.Color, cerrarTile.Action);
+                
+                // Crear un panel contenedor para centrar la última tarjeta
+                var cerrarContainer = new Panel();
+                cerrarContainer.Size = new Size(800, 210); // Altura aumentada para mostrar la tarjeta completa
+                cerrarContainer.BackColor = Color.Transparent;
+                
+                // Centrar la tarjeta de cerrar dentro del contenedor
+                cerrarButton.Location = new Point((cerrarContainer.Width - cerrarButton.Width) / 2, 20);
+                cerrarButton.Margin = new Padding(0);
+                cerrarContainer.Controls.Add(cerrarButton);
+                
+                // Forzar que el contenedor ocupe toda una fila
+                tilesContainer.SetFlowBreak(cerrarContainer, true);
+                tilesContainer.Controls.Add(cerrarContainer);
+            }
+        }
+
+        private void CreateAdminLayout(List<TileInfo> tiles)
+        {
+            // Las primeras 9 tarjetas en 3 filas de 3
+            for (int i = 0; i < Math.Min(9, tiles.Count - 1); i++) // -1 para dejar la última para el final
+            {
+                var tile = tiles[i];
+                var tileButton = CreateTileButton(tile.Title, tile.Description, tile.Icon, tile.Color, tile.Action);
+                
+                // Ajustar márgenes para layout de administrador
+                tileButton.Margin = new Padding(15, 10, 15, 10);
+                tilesContainer.Controls.Add(tileButton);
+            }
+            
+            // La tarjeta de cerrar (última) centrada en una nueva fila
+            if (tiles.Count > 0)
+            {
+                var cerrarTile = tiles[tiles.Count - 1]; // Última tarjeta (Cerrar)
+                var cerrarButton = CreateTileButton(cerrarTile.Title, cerrarTile.Description, cerrarTile.Icon, cerrarTile.Color, cerrarTile.Action);
+                
+                // Crear un panel contenedor para centrar la última tarjeta
+                var cerrarContainer = new Panel();
+                cerrarContainer.Size = new Size(1050, 180); // Altura suficiente para mostrar la tarjeta completa
+                cerrarContainer.BackColor = Color.Transparent;
+                
+                // Centrar la tarjeta de cerrar dentro del contenedor
+                cerrarButton.Location = new Point((cerrarContainer.Width - cerrarButton.Width) / 2, 15);
+                cerrarButton.Margin = new Padding(0);
+                cerrarContainer.Controls.Add(cerrarButton);
+                
+                // Forzar que el contenedor ocupe toda una fila
+                tilesContainer.SetFlowBreak(cerrarContainer, true);
+                tilesContainer.Controls.Add(cerrarContainer);
+            }
+        }
+
+        private Panel CreateTileButton(string title, string description, string icon, Color color, Action? clickAction)
         {
             var tile = new Panel();
-            tile.Size = new Size(300, 180); // Tamaño aumentado
+            
+            // Tamaño ajustado para el layout de administrador
+            if (_currentUser.Rol == "Administrador")
+            {
+                tile.Size = new Size(320, 150); // Ligeramente más compacto para caber 3 filas
+                tile.Margin = new Padding(15, 10, 15, 10);
+            }
+            else if (_currentUser.Rol == "Profesor")
+            {
+                tile.Size = new Size(320, 180); // Tamaño normal para profesor
+                tile.Margin = new Padding(25, 15, 25, 15);
+            }
+            else
+            {
+                tile.Size = new Size(320, 180); // Tamaño normal para otros roles
+                tile.Margin = new Padding(25, 15, 25, 15);
+            }
+            
             tile.BackColor = Color.White;
-            tile.Margin = new Padding(15);
             tile.Cursor = Cursors.Hand;
             
             // Efecto de sombra simulado con un borde
@@ -322,7 +448,7 @@ namespace GimnasioApp.Desktop.Forms
                 {
                     Title = "Ver Planes",
                     Description = "Consultar planes disponibles",
-                    Icon = "❓",
+                    Icon = "📋",
                     Color = Color.FromArgb(155, 89, 182),
                     Action = () => new FormPlanesConsulta().ShowDialog()
                 });
@@ -366,33 +492,21 @@ namespace GimnasioApp.Desktop.Forms
                 {
                     Title = "Ver Planes",
                     Description = "Consultar planes disponibles",
-                    Icon = "�",
+                    Icon = "📋",
                     Color = Color.FromArgb(155, 89, 182),
                     Action = () => new FormPlanesConsulta().ShowDialog()
                 });
             }
 
-            // ========== ACCESO RÁPIDO PARA TODOS LOS ROLES ==========
-            if (_currentUser.Rol == "Administrador" || _currentUser.Rol == "Recepcionista")
+            // ========== TARJETA CERRAR SESIÓN PARA TODOS LOS ROLES ==========
+            tiles.Add(new TileInfo
             {
-                tiles.Add(new TileInfo
-                {
-                    Title = "Entrada",
-                    Description = "Registrar entrada rápida",
-                    Icon = "🚪",
-                    Color = Color.FromArgb(22, 160, 133),
-                    Action = () => new FormEntradaRapida().ShowDialog()
-                });
-
-                tiles.Add(new TileInfo
-                {
-                    Title = "Salida Rápida", 
-                    Description = "Registrar salida rápida",
-                    Icon = "🚪",
-                    Color = Color.FromArgb(192, 57, 43),
-                    Action = () => new FormSalidaRapida().ShowDialog()
-                });
-            }
+                Title = "Cerrar",
+                Description = "Salir del sistema",
+                Icon = "🚪",
+                Color = Color.FromArgb(220, 53, 69), // Rojo Bootstrap
+                Action = () => CerrarSesion()
+            });
 
             return tiles;
         }
@@ -402,7 +516,7 @@ namespace GimnasioApp.Desktop.Forms
             // Mantener el menú superior para funciones adicionales si es necesario
         }
 
-        private void BtnCerrarSesion_Click(object? sender, EventArgs e)
+        private void CerrarSesion()
         {
             var result = MessageBox.Show(
                 "¿Está seguro que desea cerrar la sesión actual?",
@@ -417,6 +531,137 @@ namespace GimnasioApp.Desktop.Forms
                 Application.Restart();
                 Environment.Exit(0);
             }
+        }
+
+        private void SetBackgroundImage()
+        {
+            try
+            {
+                // Limpiar imagen de fondo anterior si existe
+                if (this.BackgroundImage != null)
+                {
+                    this.BackgroundImage.Dispose();
+                    this.BackgroundImage = null;
+                }
+
+                // Intentar varias rutas posibles para la imagen
+                string[] possiblePaths = {
+                    Path.Combine(Application.StartupPath, "Resources", "gym-background.jpg"),
+                    Path.Combine(Application.StartupPath, "Resources", "gym-background.png"),
+                    Path.Combine(Application.StartupPath, "gym-background.jpg"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "Resources", "gym-background.jpg"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "Resources", "gym-background.png"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "gym-background.jpg")
+                };
+                
+                string? foundImagePath = null;
+                foreach (var path in possiblePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        foundImagePath = path;
+                        break;
+                    }
+                }
+                
+                if (foundImagePath != null)
+                {
+                    // Cargar y configurar la imagen de fondo
+                    using (var originalImage = Image.FromFile(foundImagePath))
+                    {
+                        // Crear una copia optimizada para evitar bloqueo de archivo
+                        var backgroundImage = new Bitmap(originalImage, Math.Min(800, originalImage.Width), Math.Min(600, originalImage.Height));
+                        this.BackgroundImage = backgroundImage;
+                        this.BackgroundImageLayout = ImageLayout.Stretch;
+                        // Asegurar que el fondo se vea removiendo colores de fondo
+                        this.BackColor = Color.Transparent;
+                    }
+                }
+                else
+                {
+                    // Usar solo color sólido para evitar problemas de memoria
+                    CreateSimpleBackground();
+                }
+            }
+            catch (OutOfMemoryException)
+            {
+                // Error específico de memoria - usar fondo simple
+                CreateSimpleBackground();
+            }
+            catch (Exception ex)
+            {
+                // En caso de cualquier error, usar fondo simple
+                CreateSimpleBackground();
+            }
+        }
+        
+        private void CreateGradientBackground()
+        {
+            try
+            {
+                // Crear un gradiente elegante usando Paint event (más eficiente)
+                this.BackgroundImage = null;
+                this.BackColor = Color.FromArgb(22, 25, 28);
+                
+                // Remover eventos anteriores para evitar duplicados
+                this.Paint -= FormMainModern_Paint;
+                this.Paint += FormMainModern_Paint;
+            }
+            catch
+            {
+                // Si falla, usar fondo simple
+                CreateSimpleBackground();
+            }
+        }
+
+        private void CreateSimpleBackground()
+        {
+            // Fondo ultra simple - solo color sólido oscuro de gimnasio
+            this.BackgroundImage = null;
+            this.BackColor = Color.FromArgb(22, 25, 28);  // Color sólido oscuro de gimnasio
+            
+            // Remover el evento Paint para que no interfiera
+            this.Paint -= FormMainModern_Paint;
+        }
+        
+        private void FormMainModern_Paint(object? sender, PaintEventArgs e)
+        {
+            try
+            {
+                // Crear un gradiente elegante pero liviano
+                using (var brush = new LinearGradientBrush(
+                    this.ClientRectangle,
+                    Color.FromArgb(32, 36, 40),  // Más claro arriba
+                    Color.FromArgb(18, 20, 22),  // Más oscuro abajo
+                    LinearGradientMode.Vertical))
+                {
+                    e.Graphics.FillRectangle(brush, this.ClientRectangle);
+                }
+                
+                // Agregar líneas sutiles de textura de gimnasio
+                using (var pen = new Pen(Color.FromArgb(8, 255, 165, 0), 1)) // Naranja muy tenue
+                {
+                    // Líneas diagonales muy sutiles cada 100 pixels
+                    for (int i = -this.Height; i < this.Width + this.Height; i += 100)
+                    {
+                        e.Graphics.DrawLine(pen, i, 0, i - this.Height, this.Height);
+                    }
+                }
+            }
+            catch
+            {
+                // Si algo falla, usar color sólido
+                using (var brush = new SolidBrush(Color.FromArgb(22, 25, 28)))
+                {
+                    e.Graphics.FillRectangle(brush, this.ClientRectangle);
+                }
+            }
+        }
+
+        private void BtnCerrarSesion_Click(object? sender, EventArgs e)
+        {
+            // Método legacy - ahora redirige al nuevo método
+            CerrarSesion();
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)

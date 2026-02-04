@@ -1,0 +1,2 @@
+// Este archivo será reemplazado con la imagen real del gimnasio
+// La imagen se convertirá a base64 para integrarla en el código
